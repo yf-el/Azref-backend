@@ -28,3 +28,19 @@ output "ssm_database_url_arn" {
 output "ssm_clerk_issuer_arn" {
   value = aws_ssm_parameter.clerk_issuer.arn
 }
+
+# --- Agent service outputs ----------------------------------------------
+
+output "agent_ecr_repository_url" {
+  value       = aws_ecr_repository.agent.repository_url
+  description = "Full ECR URL for the agent service (docker push / pull)."
+}
+
+output "agent_ecr_repository_arn" {
+  value = aws_ecr_repository.agent.arn
+}
+
+output "agent_ssm_path_prefix" {
+  value       = local.agent_ssm_path_prefix
+  description = "Path under which all agent params live in SSM."
+}

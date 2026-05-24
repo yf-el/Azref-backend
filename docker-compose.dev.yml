@@ -34,5 +34,26 @@ services:
       - ./libs:/libs
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /app/app --reload-dir /libs
 
+  agent:
+    build:
+      context: .
+      dockerfile: services/agent/Dockerfile
+    environment:
+      STAGE: dev
+      LOG_LEVEL: INFO
+      DATABASE_URL: ${AGENT_DATABASE_URL:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      CEREBRAS_API_KEY: ${CEREBRAS_API_KEY:-}
+      MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
+      CLERK_ISSUER: ${CLERK_ISSUER:-}
+      CLERK_JWKS_URL: ${CLERK_JWKS_URL:-}
+      CORS_ORIGINS: ${AGENT_CORS_ORIGINS:-http://localhost:3000}
+    ports:
+      - "8001:8000"
+    volumes:
+      - ./services/agent/app:/app/app
+      - ./libs:/libs
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /app/app --reload-dir /libs
+
 volumes:
   postgres_data:

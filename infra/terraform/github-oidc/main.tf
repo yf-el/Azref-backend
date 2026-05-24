@@ -74,7 +74,7 @@ data "aws_iam_policy_document" "deploy" {
     resources = ["*"]
   }
 
-  # 2. Push images to OUR ECR repo only
+  # 2. Push images to OUR ECR repos only
   statement {
     sid = "EcrPushPull"
     actions = [
@@ -87,7 +87,10 @@ data "aws_iam_policy_document" "deploy" {
       "ecr:DescribeImages",
       "ecr:GetDownloadUrlForLayer",
     ]
-    resources = [data.terraform_remote_state.platform.outputs.ecr_repository_arn]
+    resources = [
+      data.terraform_remote_state.platform.outputs.ecr_repository_arn,
+      data.terraform_remote_state.platform.outputs.agent_ecr_repository_arn,
+    ]
   }
 
   # 3. SSM SendCommand on any EC2 tagged for our services (tag-based, decoupled from instance_id)
@@ -108,7 +111,10 @@ data "aws_iam_policy_document" "deploy" {
     condition {
       test     = "StringEquals"
       variable = "aws:ResourceTag/Name"
-      values   = ["azref-dev-users-service"]
+      values = [
+        "azref-dev-users-service",
+        "azref-dev-agent",
+      ]
     }
   }
 

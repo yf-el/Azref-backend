@@ -53,3 +53,35 @@ variable "ecr_image_retention_count" {
   description = "How many images to keep in the ECR repository before expiring older ones."
   default     = 10
 }
+
+# --- Agent service secrets ----------------------------------------------
+# These are pushed to SSM Parameter Store and read by the agent container at
+# start. Provide values via a gitignored secrets.auto.tfvars or env vars
+# (TF_VAR_agent_database_url, etc.). Never commit real values.
+
+variable "agent_database_url" {
+  type        = string
+  description = "PostgreSQL DSN for the external legal docs DB the agent queries (read-only)."
+  sensitive   = true
+}
+
+variable "agent_groq_api_key" {
+  type        = string
+  description = "Groq API key."
+  sensitive   = true
+  default     = ""
+}
+
+variable "agent_cerebras_api_key" {
+  type        = string
+  description = "Cerebras API key."
+  sensitive   = true
+  default     = ""
+}
+
+variable "agent_mistral_api_key" {
+  type        = string
+  description = "Mistral API key."
+  sensitive   = true
+  default     = ""
+}
