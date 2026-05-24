@@ -14,15 +14,6 @@ data "terraform_remote_state" "platform" {
   }
 }
 
-data "terraform_remote_state" "users_service" {
-  backend = "s3"
-  config = {
-    bucket = "azref-tfstate-230148048244"
-    key    = "services/users-service/terraform.tfstate"
-    region = var.aws_region
-  }
-}
-
 # --- OIDC provider (one per AWS account) --------------------------------
 
 resource "aws_iam_openid_connect_provider" "github" {
@@ -99,14 +90,26 @@ data "aws_iam_policy_document" "deploy" {
     resources = [data.terraform_remote_state.platform.outputs.ecr_repository_arn]
   }
 
-  # 3. SSM SendCommand to trigger redeploy on the users-service EC2
+  # 3. SSM SendCommand on any EC2 tagged for our services (tag-based, decoupled from instance_id)
   statement {
-    sid     = "SsmSendCommand"
+    sid     = "SsmSendCommandDocument"
     actions = ["ssm:SendCommand"]
     resources = [
-      "arn:aws:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:instance/${data.terraform_remote_state.users_service.outputs.instance_id}",
       "arn:aws:ssm:${var.aws_region}::document/AWS-RunShellScript",
     ]
+  }
+
+  statement {
+    sid     = "SsmSendCommandInstance"
+    actions = ["ssm:SendCommand"]
+    resources = [
+      "arn:aws:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:instance/*",
+    ]
+    condition {
+      test     = "StringEquals"
+      variable = "aws:ResourceTag/Name"
+      values   = ["azref-dev-users-service"]
+    }
   }
 
   # 4. Read back the result of the SendCommand
