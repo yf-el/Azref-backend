@@ -15,8 +15,8 @@ services:
       timeout: 3s
       retries: 10
 
-  auth-backend:
-    build: ./services/auth-backend
+  users-service:
+    build: ./services/users-service
     environment:
       DATABASE_URL: postgresql+asyncpg://azref:azref@postgres:5432/azref
       LOG_LEVEL: INFO
@@ -26,7 +26,7 @@ services:
       postgres:
         condition: service_healthy
     volumes:
-      - ./services/auth-backend/app:/app/app
+      - ./services/users-service/app:/app/app
 
 volumes:
   postgres_data:
