@@ -100,15 +100,12 @@ data "aws_iam_policy_document" "ssm_read" {
     ]
   }
 
-  # SecureString params are encrypted with AWS-managed KMS; allow decrypt.
+  # SecureString params are encrypted with the AWS-managed key 'aws/ssm'.
+  # The kms:ViaService condition was misbehaving for GetParametersByPath, so we drop it
+  # and rely on the action+resource scope alone (kms:Decrypt is still bounded by KMS key policy).
   statement {
     actions   = ["kms:Decrypt"]
     resources = ["*"]
-    condition {
-      test     = "StringEquals"
-      variable = "kms:ViaService"
-      values   = ["ssm.${var.aws_region}.amazonaws.com"]
-    }
   }
 }
 
