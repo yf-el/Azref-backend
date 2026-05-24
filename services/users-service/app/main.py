@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
+from app.routers import me as me_router
 
 app = FastAPI(
     title="Azref users service",
@@ -23,3 +24,6 @@ async def health() -> dict[str, str]:
         "service": settings.service_name,
         "version": settings.service_version,
     }
+
+
+app.include_router(me_router.router)

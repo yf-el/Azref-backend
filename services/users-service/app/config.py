@@ -6,7 +6,7 @@ class Settings(BaseSettings):
 
     log_level: str = "INFO"
     database_url: str = "postgresql+asyncpg://azref:azref@localhost:5433/azref"
-    service_name: str = "auth-backend"
+    service_name: str = "users-service"
     service_version: str = "0.1.0"
 
 
