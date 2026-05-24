@@ -1,29 +1,41 @@
-from fastapi import APIRouter, Depends
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_session
 from app.models import User
-from app.schemas import UserOut
+from app.schemas import UserOut, UserUpdate
 from auth_clerk import ClerkClaims, get_current_clerk_user
 
 router = APIRouter()
 
 
-@router.get("/me", response_model=UserOut)
-async def me(
+async def current_user(
     claims: ClerkClaims = Depends(get_current_clerk_user),
     session: AsyncSession = Depends(get_session),
-):
-    result = await session.execute(
-        select(User).where(User.clerk_user_id == claims.sub)
+) -> User:
+    return await User.get_or_create_from_clerk(
+        session,
+        clerk_user_id=claims.sub,
+        email=claims.email,
     )
-    user = result.scalar_one_or_none()
 
-    if user is None:
-        user = User(clerk_user_id=claims.sub, email=claims.email)
-        session.add(user)
-        await session.commit()
-        await session.refresh(user)
 
+@router.get("/me", response_model=UserOut)
+async def get_me(user: User = Depends(current_user)):
     return user
+
+
+@router.patch("/me", response_model=UserOut)
+async def patch_me(
+    payload: UserUpdate,
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    updates = payload.model_dump(exclude_unset=True)
+    if not updates:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No fields provided",
+        )
+
+    return await User.update(session, user, **updates)

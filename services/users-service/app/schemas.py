@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, computed_field
+from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 
 class UserOut(BaseModel):
@@ -19,3 +19,8 @@ class UserOut(BaseModel):
     @property
     def onboarded(self) -> bool:
         return self.profession is not None and self.usage_type is not None
+
+
+class UserUpdate(BaseModel):
+    profession: str | None = Field(default=None, max_length=120)
+    usage_type: str | None = Field(default=None, max_length=120)
