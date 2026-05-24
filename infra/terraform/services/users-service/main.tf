@@ -170,10 +170,11 @@ resource "aws_instance" "main" {
   iam_instance_profile   = aws_iam_instance_profile.instance.name
 
   user_data = templatefile("${path.module}/user_data.sh.tpl", {
-    aws_region  = var.aws_region
-    ecr_url     = data.terraform_remote_state.platform.outputs.ecr_repository_url
-    ssm_prefix  = data.terraform_remote_state.platform.outputs.ssm_path_prefix
-    log_group   = local.log_group
+    aws_region = var.aws_region
+    ecr_url    = data.terraform_remote_state.platform.outputs.ecr_repository_url
+    ssm_prefix = data.terraform_remote_state.platform.outputs.ssm_path_prefix
+    log_group  = local.log_group
+    hostname   = var.hostname
   })
 
   # Trigger replacement if user_data changes.

@@ -24,3 +24,8 @@ variable "log_retention_days" {
   description = "CloudWatch Logs retention. Free tier covers ~5GB ingest/mo, no time cap."
   default     = 7
 }
+
+variable "hostname" {
+  type        = string
+  description = "Public hostname for the service, used by Caddy to obtain a Let's Encrypt cert. Must have a DNS A record pointing to the EIP BEFORE applying."
+}
