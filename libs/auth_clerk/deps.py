@@ -1,11 +1,14 @@
 import os
 from functools import lru_cache
 
-from fastapi import Header, HTTPException
+from fastapi import Depends, HTTPException
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from auth_clerk.jwks import JWKSClient
 from auth_clerk.schemas import ClerkClaims
 from auth_clerk.verify import verify_token
+
+_security = HTTPBearer(auto_error=False)
 
 
 @lru_cache(maxsize=1)
@@ -16,15 +19,14 @@ def _get_client() -> tuple[str, JWKSClient]:
 
 
 async def get_current_clerk_user(
-    authorization: str = Header(default=""),
+    credentials: HTTPAuthorizationCredentials | None = Depends(_security),
 ) -> ClerkClaims:
-    if not authorization.startswith("Bearer "):
+    if credentials is None:
         raise HTTPException(status_code=401, detail="Missing bearer token")
-    token = authorization.removeprefix("Bearer ").strip()
 
     issuer, jwks = _get_client()
     try:
-        return await verify_token(token, issuer=issuer, jwks=jwks)
+        return await verify_token(credentials.credentials, issuer=issuer, jwks=jwks)
     except HTTPException:
         raise
     except Exception as e:
