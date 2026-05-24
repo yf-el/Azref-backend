@@ -3,7 +3,7 @@ from fastapi import FastAPI, CORSMiddleware
 from app.config import settings
 
 app = FastAPI(
-    title="Azref auth-backend",
+    title="Azref users service",
     version=settings.service_version,
 )
 cors = settings.cors
