@@ -1,4 +1,5 @@
-from fastapi import FastAPI, CORSMiddleware
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 
@@ -6,24 +7,13 @@ app = FastAPI(
     title="Azref users service",
     version=settings.service_version,
 )
-cors = settings.cors
-
-if cors:
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=cors.allow_origins,
-        allow_methods=cors.allow_methods,
-        allow_headers=cors.allow_headers,
-        allow_credentials=cors.allow_credentials,
-    )
-else:
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_methods=["*"],
-        allow_headers=["*"],
-        allow_credentials=True,
-    )
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+    allow_credentials=True,
+)
 
 
 @app.get("/health")
