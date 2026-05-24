@@ -93,6 +93,9 @@ data "aws_iam_policy_document" "ssm_read" {
       "ssm:GetParametersByPath",
     ]
     resources = [
+      # GetParametersByPath needs permission on the parent path itself
+      "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${data.terraform_remote_state.platform.outputs.ssm_path_prefix}",
+      # GetParameter / GetParameters need permission on individual params under that path
       "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${data.terraform_remote_state.platform.outputs.ssm_path_prefix}/*",
     ]
   }
