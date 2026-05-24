@@ -1,36 +1,11 @@
 # One-shot bootstrap: creates the S3 bucket + DynamoDB table that hold Terraform state
-# for the rest of the stack. Run this once with local state, then point envs/dev at it.
+# for the rest of the stacks. Run this once with local state, then point each stack at it.
 #
 # Usage:
 #   cd infra/terraform/bootstrap
 #   terraform init
-#   terraform apply -var="project_name=azref" -var="aws_region=eu-west-3"
-#   # Copy the outputs into infra/terraform/envs/dev/backend.tf
-
-terraform {
-  required_version = ">= 1.6"
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.70"
-    }
-  }
-}
-
-provider "aws" {
-  region = var.aws_region
-}
-
-variable "project_name" {
-  type        = string
-  description = "Short project slug, used as prefix for all resources."
-  default     = "azref"
-}
-
-variable "aws_region" {
-  type    = string
-  default = "eu-west-3"
-}
+#   terraform apply
+#   # Copy the outputs into each stack's backend.tf
 
 # S3 bucket names are globally unique; append the account id to avoid collisions.
 data "aws_caller_identity" "current" {}
@@ -82,18 +57,4 @@ resource "aws_dynamodb_table" "tfstate_lock" {
     name = "LockID"
     type = "S"
   }
-}
-
-output "state_bucket" {
-  value       = aws_s3_bucket.tfstate.id
-  description = "Put this in envs/dev/backend.tf under 'bucket ='"
-}
-
-output "state_lock_table" {
-  value       = aws_dynamodb_table.tfstate_lock.name
-  description = "Put this in envs/dev/backend.tf under 'dynamodb_table ='"
-}
-
-output "aws_region" {
-  value = var.aws_region
 }
