@@ -44,3 +44,18 @@ output "agent_ssm_path_prefix" {
   value       = local.agent_ssm_path_prefix
   description = "Path under which all agent params live in SSM."
 }
+
+# --- Redis outputs ------------------------------------------------------
+
+output "redis_endpoint" {
+  value       = "${aws_elasticache_cluster.main.cache_nodes[0].address}:${aws_elasticache_cluster.main.cache_nodes[0].port}"
+  description = "ElastiCache Redis host:port (private, only reachable from compute SG)."
+}
+
+output "ssm_users_service_redis_url_arn" {
+  value = aws_ssm_parameter.users_service_redis_url.arn
+}
+
+output "ssm_agent_redis_url_arn" {
+  value = aws_ssm_parameter.agent_redis_url.arn
+}
