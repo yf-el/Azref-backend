@@ -16,10 +16,14 @@ services:
       retries: 10
 
   users-service:
-    build: ./services/users-service
+    build:
+      context: .
+      dockerfile: services/users-service/Dockerfile
     environment:
       DATABASE_URL: postgresql+asyncpg://azref:azref@postgres:5432/azref
       LOG_LEVEL: INFO
+      CLERK_ISSUER: ${CLERK_ISSUER:-}
+      CLERK_JWKS_URL: ${CLERK_JWKS_URL:-}
     ports:
       - "8000:8000"
     depends_on:
@@ -27,6 +31,7 @@ services:
         condition: service_healthy
     volumes:
       - ./services/users-service/app:/app/app
+      - ./libs:/libs
 
 volumes:
   postgres_data:

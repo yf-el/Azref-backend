@@ -1,4 +1,4 @@
-from auth_clerk.fastapi import get_current_clerk_user
+from auth_clerk.deps import get_current_clerk_user
 from auth_clerk.jwks import JWKSClient
 from auth_clerk.schemas import ClerkClaims
 from auth_clerk.verify import verify_token
