@@ -4,9 +4,9 @@ locals {
 
 # --- SSM Parameter Store: Kafka (shared) --------------------------------
 # Confluent Cloud creds. Stored once here and consumed by every service that
-# needs to produce/consume events. Each consuming service must grant itself
-# read access via an explicit IAM statement scoped to KAFKA_* (see
-# services/agent/main.tf for the pattern).
+# needs to produce/consume events. Consuming services grant themselves read
+# access on the whole shared/ prefix (see services/agent/main.tf for the
+# pattern) — anything added under shared/ later is auto-injected as env var.
 
 resource "aws_ssm_parameter" "kafka_bootstrap_servers" {
   name        = "${local.shared_ssm_path_prefix}/KAFKA_BOOTSTRAP_SERVERS"

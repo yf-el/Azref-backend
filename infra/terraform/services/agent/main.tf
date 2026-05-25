@@ -84,9 +84,8 @@ resource "aws_iam_role_policy_attachment" "ssm_core" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
-# Read SSM params under our agent prefix, plus the shared Kafka creds.
-# Shared path is scoped narrowly to KAFKA_* — agent must not see other
-# cross-service params it doesn't need.
+# Read SSM params under our agent prefix, plus everything under the shared
+# prefix (Kafka creds today, more cross-service params later).
 data "aws_iam_policy_document" "ssm_read" {
   statement {
     actions = [
@@ -97,16 +96,8 @@ data "aws_iam_policy_document" "ssm_read" {
     resources = [
       "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${data.terraform_remote_state.platform.outputs.agent_ssm_path_prefix}",
       "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${data.terraform_remote_state.platform.outputs.agent_ssm_path_prefix}/*",
-    ]
-  }
-
-  statement {
-    actions = [
-      "ssm:GetParameter",
-      "ssm:GetParameters",
-    ]
-    resources = [
-      "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${data.terraform_remote_state.platform.outputs.shared_ssm_path_prefix}/KAFKA_*",
+      "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${data.terraform_remote_state.platform.outputs.shared_ssm_path_prefix}",
+      "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${data.terraform_remote_state.platform.outputs.shared_ssm_path_prefix}/*",
     ]
   }
 
@@ -177,11 +168,12 @@ resource "aws_instance" "main" {
   iam_instance_profile   = aws_iam_instance_profile.instance.name
 
   user_data = templatefile("${path.module}/user_data.sh.tpl", {
-    aws_region = var.aws_region
-    ecr_url    = data.terraform_remote_state.platform.outputs.agent_ecr_repository_url
-    ssm_prefix = data.terraform_remote_state.platform.outputs.agent_ssm_path_prefix
-    log_group  = local.log_group
-    hostname   = var.hostname
+    aws_region        = var.aws_region
+    ecr_url           = data.terraform_remote_state.platform.outputs.agent_ecr_repository_url
+    ssm_prefix        = data.terraform_remote_state.platform.outputs.agent_ssm_path_prefix
+    shared_ssm_prefix = data.terraform_remote_state.platform.outputs.shared_ssm_path_prefix
+    log_group         = local.log_group
+    hostname          = var.hostname
   })
 
   user_data_replace_on_change = true

@@ -38,6 +38,7 @@ set -e
 REGION="${aws_region}"
 ECR_URL="${ecr_url}"
 SSM_PREFIX="${ssm_prefix}"
+SHARED_SSM_PREFIX="${shared_ssm_prefix}"
 LOG_GROUP="${log_group}"
 IMAGE_TAG="$${1:-latest}"
 
@@ -51,18 +52,28 @@ aws ecr get-login-password --region $REGION \
 
 docker pull $ECR_URL:$IMAGE_TAG
 
-# Fetch every SSM param under $SSM_PREFIX and turn it into a docker -e arg
+# Fetch service-private params + every shared/* param and turn each into
+# a docker -e arg. Shared params (Kafka creds today, more later) are
+# readable by every service whose IAM grants ssm:Get* on shared_ssm_prefix.
 declare -a ENV_ARGS=()
 while IFS=$'\t' read -r fullname value; do
   key=$${fullname##*/}
   ENV_ARGS+=("-e" "$${key}=$${value}")
 done < <(
-  aws ssm get-parameters-by-path \
-    --path "$SSM_PREFIX" \
-    --with-decryption \
-    --region "$REGION" \
-    --query 'Parameters[].[Name,Value]' \
-    --output text
+  {
+    aws ssm get-parameters-by-path \
+      --path "$SSM_PREFIX" \
+      --with-decryption \
+      --region "$REGION" \
+      --query 'Parameters[].[Name,Value]' \
+      --output text
+    aws ssm get-parameters-by-path \
+      --path "$SHARED_SSM_PREFIX" \
+      --with-decryption \
+      --region "$REGION" \
+      --query 'Parameters[].[Name,Value]' \
+      --output text
+  }
 )
 
 docker stop users-service 2>/dev/null || true

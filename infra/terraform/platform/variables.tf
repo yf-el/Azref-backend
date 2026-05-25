@@ -90,7 +90,7 @@ variable "agent_mistral_api_key" {
 # Confluent Cloud Basic cluster. Same credentials consumed by every service
 # that produces or consumes events (agent, users-service, future workers).
 # Stored once under /<project>/<env>/shared/KAFKA_* and exposed to each
-# service via an explicit IAM statement scoped to KAFKA_* (least-privilege).
+# service via an IAM statement on the shared/ prefix (see services/*/main.tf).
 
 variable "kafka_bootstrap_servers" {
   type        = string
