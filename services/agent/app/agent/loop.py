@@ -10,16 +10,28 @@ from urllib.parse import quote
 
 from cache_semantic import cache_exact
 
-from app.agent.prompt import SYSTEM_PROMPT
+from app.agent.lang import detect_lang
+from app.agent.prompt import get_system_prompt
 from app.agent.tools import TOOL_SCHEMAS, execute_tool
 from app.agent.types import AgentResponse, Source, ToolStep
 from app.llm.cascade import get_cascade
 from app.config import settings
 
-NO_RESULTS_ANSWER = (
-    "لم أجد معلومات محددة في قاعدة البيانات حول هذا الموضوع.\n\n"
-    "يمكنك البحث يدوياً في الموقع للاطلاع على الوثائق المتاحة."
-)
+NO_RESULTS_ANSWERS = {
+    "ar": (
+        "لم أجد معلومات محددة في قاعدة البيانات حول هذا الموضوع.\n\n"
+        "يمكنك البحث يدوياً في الموقع للاطلاع على الوثائق المتاحة."
+    ),
+    "fr": (
+        "Je n'ai pas trouvé d'information précise dans la base de données sur ce sujet.\n\n"
+        "Vous pouvez effectuer une recherche manuelle sur le site pour consulter les documents disponibles."
+    ),
+}
+
+FINAL_ANSWER_PROMPTS = {
+    "ar": "أجب الآن بناءً على ما جمعته من معلومات.",
+    "fr": "Réponds maintenant à l'utilisateur en te basant sur les informations collectées.",
+}
 
 logger = logging.getLogger(__name__)
 
@@ -32,9 +44,10 @@ async def run_agent(question: str) -> AgentResponse:
     Cached for 24h on exact question match (Redis); see [[cache_semantic]] lib.
     """
     cascade = get_cascade()
+    lang = detect_lang(question)
 
     messages = [
-        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "system", "content": get_system_prompt(lang)},
         {"role": "user", "content": question},
     ]
 
@@ -59,7 +72,7 @@ async def run_agent(question: str) -> AgentResponse:
 
             # Hard stop: if no sources found, don't trust the LLM answer
             if not sources:
-                answer = NO_RESULTS_ANSWER
+                answer = NO_RESULTS_ANSWERS[lang]
                 fallback_url = f"https://huquqai.ma/search?q={quote(question)}"
 
             return AgentResponse(
@@ -121,7 +134,7 @@ async def run_agent(question: str) -> AgentResponse:
     logger.warning("Max steps reached, forcing final answer")
     messages.append({
         "role": "user",
-        "content": "أجب الآن بناءً على ما جمعته من معلومات.",
+        "content": FINAL_ANSWER_PROMPTS[lang],
     })
 
     result = await cascade.chat(messages=messages, max_tokens=3000)
