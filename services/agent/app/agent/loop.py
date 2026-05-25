@@ -128,7 +128,7 @@ async def run_agent(question: str) -> AgentResponse:
             ))
 
             # Extract sources from tool results
-            sources.extend(_extract_sources(fn_name, parsed_results))
+            sources.extend(_extract_sources(fn_name, parsed_results, lang))
 
     # Max steps reached — force a final answer
     logger.warning("Max steps reached, forcing final answer")
@@ -165,23 +165,39 @@ def _strip_thinking(content: str) -> str:
 
 
 SOURCE_LABELS = {
-    "adala_documents": "وزارة العدل (عدالة)",
-    "juriscassation_documents": "محكمة النقض",
-    "sgg_documents": "الجريدة الرسمية",
-    "collectivites_documents": "الجماعات الترابية",
-    "cspj_documents": "المجلس الأعلى للسلطة القضائية",
+    "ar": {
+        "adala_documents": "وزارة العدل (عدالة)",
+        "juriscassation_documents": "محكمة النقض",
+        "sgg_documents": "الجريدة الرسمية",
+        "collectivites_documents": "الجماعات الترابية",
+        "cspj_documents": "المجلس الأعلى للسلطة القضائية",
+    },
+    "fr": {
+        "adala_documents": "Ministère de la Justice (Adala)",
+        "juriscassation_documents": "Cour de cassation",
+        "sgg_documents": "Bulletin officiel",
+        "collectivites_documents": "Collectivités territoriales",
+        "cspj_documents": "Conseil supérieur du pouvoir judiciaire",
+    },
 }
 
 
-def _extract_sources(tool_name: str, results: list | dict) -> list[Source]:
-    """Extract Source objects from tool results."""
+def _article_ref(lang: str, article_numero: str, loi_numero: str) -> str:
+    if lang == "fr":
+        return f"Article {article_numero} de {loi_numero}"
+    return f"المادة {article_numero} من {loi_numero}"
+
+
+def _extract_sources(tool_name: str, results: list | dict, lang: str) -> list[Source]:
+    """Extract Source objects from tool results, localized to `lang`."""
     sources = []
+    labels = SOURCE_LABELS.get(lang, SOURCE_LABELS["ar"])
 
     # search_all returns a dict with chunks/lois/articles
     if tool_name == "search_all" and isinstance(results, dict):
         for r in results.get("chunks", []):
             table = r.get("source_table", "")
-            label = SOURCE_LABELS.get(table, table)
+            label = labels.get(table, table)
             sources.append(Source(
                 type="document",
                 reference=label,
@@ -197,7 +213,7 @@ def _extract_sources(tool_name: str, results: list | dict) -> list[Source]:
         for r in results.get("articles", []):
             sources.append(Source(
                 type="article",
-                reference=f"المادة {r.get('article_numero', '')} من {r.get('loi_numero', '')}",
+                reference=_article_ref(lang, r.get("article_numero", ""), r.get("loi_numero", "")),
                 title=r.get("contenu", "")[:100] if r.get("contenu") else "",
             ))
         return sources
@@ -215,12 +231,12 @@ def _extract_sources(tool_name: str, results: list | dict) -> list[Source]:
         elif tool_name == "get_article":
             sources.append(Source(
                 type="article",
-                reference=f"المادة {r.get('article_numero', '')} من {r.get('loi_numero', '')}",
+                reference=_article_ref(lang, r.get("article_numero", ""), r.get("loi_numero", "")),
                 title=r.get("contenu", "")[:100] if r.get("contenu") else "",
             ))
         elif tool_name == "search_documents":
             table = r.get("source_table", "")
-            label = SOURCE_LABELS.get(table, table)
+            label = labels.get(table, table)
             sources.append(Source(
                 type="document",
                 reference=label,
