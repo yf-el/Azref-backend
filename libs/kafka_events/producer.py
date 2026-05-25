@@ -1,10 +1,10 @@
 import asyncio
 import logging
+import ssl
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
 from aiokafka import AIOKafkaProducer
-from aiokafka.helpers import create_ssl_context
 
 from kafka_events.config import KafkaConfig
 from kafka_events.schemas.base import BaseEvent
@@ -33,6 +33,10 @@ class KafkaEventProducer:
     async def start(self) -> None:
         if self._producer is not None:
             return
+        # Cap at TLS 1.2: aiokafka 0.14 + Python 3.13 + OpenSSL 3.x reset
+        # mid-handshake against Confluent Cloud when negotiating TLS 1.3.
+        ssl_context = ssl.create_default_context()
+        ssl_context.maximum_version = ssl.TLSVersion.TLSv1_2
         producer = AIOKafkaProducer(
             bootstrap_servers=self._config.bootstrap_servers,
             client_id=self._config.client_id,
@@ -40,7 +44,7 @@ class KafkaEventProducer:
             sasl_mechanism="PLAIN",
             sasl_plain_username=self._config.api_key,
             sasl_plain_password=self._config.api_secret,
-            ssl_context=create_ssl_context(),
+            ssl_context=ssl_context,
             enable_idempotence=True,
             acks="all",
             compression_type="gzip",

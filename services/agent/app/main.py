@@ -9,6 +9,7 @@ from cache_semantic import close_redis, get_redis
 from app.api.routes import router
 from app.config import settings
 from app.db.client import close_pool, get_pool
+from app.kafka_client import close_producer, init_producer
 
 logging.basicConfig(
     level=settings.log_level,
@@ -25,7 +26,11 @@ async def lifespan(app: FastAPI):
     logging.info("Database pool initialized")
     get_redis()
     logging.info("Redis client initialized")
+    await init_producer()
+    logging.info("Kafka producer initialized")
     yield
+    await close_producer()
+    logging.info("Kafka producer closed")
     await close_redis()
     logging.info("Redis client closed")
     await close_pool()
