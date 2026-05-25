@@ -2,21 +2,33 @@ FROM python:3.13-slim AS base
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    PYTHONPATH=/libs
+    UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    UV_PROJECT_ENVIRONMENT=/app/.venv \
+    PATH="/app/.venv/bin:$PATH"
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
 WORKDIR /app
 
-COPY services/users-service/requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+COPY pyproject.toml uv.lock ./
+COPY services/agent/pyproject.toml ./services/agent/
+COPY services/users-service/pyproject.toml ./services/users-service/
+COPY libs/auth_clerk/pyproject.toml ./libs/auth_clerk/
+COPY libs/kafka_events/pyproject.toml ./libs/kafka_events/
+COPY libs/cache_semantic/pyproject.toml ./libs/cache_semantic/
 
-COPY libs /libs
-COPY services/users-service/app ./app
-COPY services/users-service/alembic ./alembic
-COPY services/users-service/alembic.ini ./alembic.ini
+RUN uv sync --frozen --no-dev --no-install-workspace --package users-service
+
+COPY libs ./libs
+COPY services/users-service ./services/users-service
+
+RUN uv sync --frozen --no-dev --package users-service
+
 COPY services/users-service/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
+
+WORKDIR /app/services/users-service
 
 EXPOSE 8000
 

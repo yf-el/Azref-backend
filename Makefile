@@ -1,10 +1,11 @@
-.PHONY: help dev down test lint fmt tf-init tf-plan tf-apply tf-destroy tf-bootstrap
+.PHONY: help sync dev down test lint fmt tf-init tf-plan tf-apply tf-destroy tf-bootstrap
 
 help:
 	@echo "Targets:"
-	@echo "  dev           docker compose up (postgres + auth-backend)"
+	@echo "  sync          uv sync (install all workspace members + dev tools)"
+	@echo "  dev           docker compose up (postgres + redis + services)"
 	@echo "  down          docker compose down"
-	@echo "  test          run pytest for auth-backend"
+	@echo "  test          run pytest across the workspace"
 	@echo "  lint          ruff check"
 	@echo "  fmt           ruff format"
 	@echo "  tf-bootstrap  one-shot: create S3 state bucket + DynamoDB lock table"
@@ -13,6 +14,9 @@ help:
 	@echo "  tf-apply      terraform apply (envs/dev)"
 	@echo "  tf-destroy    terraform destroy (envs/dev)"
 
+sync:
+	uv sync --all-packages --all-groups
+
 dev:
 	docker compose -f docker-compose.dev.yml up --build
 
@@ -20,13 +24,13 @@ down:
 	docker compose -f docker-compose.dev.yml down
 
 test:
-	cd services/auth-backend && python -m pytest -q
+	uv run pytest
 
 lint:
-	cd services/auth-backend && ruff check app tests
+	uv run ruff check .
 
 fmt:
-	cd services/auth-backend && ruff format app tests
+	uv run ruff format .
 
 tf-bootstrap:
 	bash scripts/tf-bootstrap.sh

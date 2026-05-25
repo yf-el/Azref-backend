@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kafka-events"
+version = "0.1.0"
+description = "Kafka event producer and schemas for Azref"
+requires-python = ">=3.13"
+dependencies = [
+    "aiokafka==0.14.0",
+    "pydantic==2.13.4",
+    "pydantic-settings==2.14.1",
+]
+
+[dependency-groups]
+dev = [
+    "pytest==9.0.3",
+    "pytest-asyncio==1.3.0",
+    "python-dotenv==1.2.2",
+]
+
+[tool.setuptools]
+packages = ["kafka_events", "kafka_events.schemas"]
+package-dir = { "kafka_events" = ".", "kafka_events.schemas" = "schemas" }
