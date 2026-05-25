@@ -5,11 +5,30 @@ from pydantic import BaseModel, ConfigDict, Field
 from kafka_events.schemas.base import BaseEvent
 
 
+class SignupAttribution(BaseModel):
+    """First-touch attribution captured client-side at the user's initial landing.
+
+    Sent by the front as an URL-encoded JSON header `X-Signup-Attribution`.
+    All fields are nullable — direct traffic with no UTMs is the common case.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    utm_source: str | None = None
+    utm_medium: str | None = None
+    utm_campaign: str | None = None
+    utm_content: str | None = None
+    utm_term: str | None = None
+    referrer: str | None = None
+    landing_path: str | None = None
+    captured_at: str | None = None
+
+
 class UserSignedUpPayload(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     user_email: str | None
-    signup_source: str | None  # huquqai | azref | None if unknown
+    attribution: SignupAttribution | None
 
 
 class UserOnboardedPayload(BaseModel):

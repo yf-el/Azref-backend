@@ -1,4 +1,9 @@
+import json
+import logging
+from urllib.parse import unquote
+
 from fastapi import APIRouter, Depends, Header, HTTPException, status
+from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_session
@@ -8,6 +13,7 @@ from app.schemas import UserOut, UserUpdate
 from auth_clerk import ClerkClaims, get_current_clerk_user
 from kafka_events import (
     TOPIC_USER_EVENTS,
+    SignupAttribution,
     UserOnboardedPayload,
     UserOnboardedV1,
     UserProfileUpdatedPayload,
@@ -16,15 +22,35 @@ from kafka_events import (
     UserSignedUpV1,
 )
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter()
 
 
+def _parse_attribution(raw: str | None) -> SignupAttribution | None:
+    """Decode the `X-Signup-Attribution` header (URL-encoded JSON).
+
+    Returns None on any decoding/parsing failure — attribution is best-effort
+    telemetry, never fatal to the signup flow.
+    """
+    if not raw:
+        return None
+    try:
+        return SignupAttribution.model_validate_json(unquote(raw))
+    except (ValueError, ValidationError) as exc:
+        logger.warning("Discarding malformed X-Signup-Attribution header: %s", exc)
+        return None
+
+
 def _emit_signed_up(
-    *, clerk_user_id: str, email: str | None, signup_source: str | None
+    *,
+    clerk_user_id: str,
+    email: str | None,
+    attribution: SignupAttribution | None,
 ) -> None:
     event = UserSignedUpV1(
         user_id=clerk_user_id,
-        payload=UserSignedUpPayload(user_email=email, signup_source=signup_source),
+        payload=UserSignedUpPayload(user_email=email, attribution=attribution),
     )
     get_producer().publish_nowait(TOPIC_USER_EVENTS, event, key=clerk_user_id)
 
@@ -33,7 +59,7 @@ def _emit_signed_up(
 async def get_me(
     claims: ClerkClaims = Depends(get_current_clerk_user),
     session: AsyncSession = Depends(get_session),
-    signup_source: str | None = Header(default=None, alias="X-Signup-Source"),
+    x_signup_attribution: str | None = Header(default=None, alias="X-Signup-Attribution"),
 ):
     user, created = await User.get_or_create_from_clerk(
         session, clerk_user_id=claims.sub, email=claims.email
@@ -42,7 +68,7 @@ async def get_me(
         _emit_signed_up(
             clerk_user_id=claims.sub,
             email=claims.email,
-            signup_source=signup_source,
+            attribution=_parse_attribution(x_signup_attribution),
         )
     return user
 
@@ -52,7 +78,7 @@ async def patch_me(
     payload: UserUpdate,
     claims: ClerkClaims = Depends(get_current_clerk_user),
     session: AsyncSession = Depends(get_session),
-    signup_source: str | None = Header(default=None, alias="X-Signup-Source"),
+    x_signup_attribution: str | None = Header(default=None, alias="X-Signup-Attribution"),
 ):
     updates = payload.model_dump(exclude_unset=True)
     if not updates:
@@ -71,7 +97,7 @@ async def patch_me(
         _emit_signed_up(
             clerk_user_id=claims.sub,
             email=claims.email,
-            signup_source=signup_source,
+            attribution=_parse_attribution(x_signup_attribution),
         )
 
     was_onboarded = user.profession is not None and user.usage_type is not None
