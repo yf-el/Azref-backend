@@ -13,6 +13,8 @@ class Settings(BaseSettings):
 
     database_url: str
 
+    redis_url: str = ""
+
     cerebras_api_key: str = ""
     groq_api_key: str = ""
     mistral_api_key: str = ""
