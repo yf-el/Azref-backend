@@ -4,6 +4,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from cache_semantic import close_redis, get_redis
+
 from app.api.routes import router
 from app.config import settings
 from app.db.client import close_pool, get_pool
@@ -21,7 +23,11 @@ ALLOWED_ORIGINS = [o.strip() for o in settings.cors_origins.split(",") if o.stri
 async def lifespan(app: FastAPI):
     await get_pool()
     logging.info("Database pool initialized")
+    get_redis()
+    logging.info("Redis client initialized")
     yield
+    await close_redis()
+    logging.info("Redis client closed")
     await close_pool()
     logging.info("Database pool closed")
 

@@ -147,3 +147,29 @@ resource "aws_security_group" "rds" {
     Name = "${local.name_prefix}-rds-sg"
   }
 }
+
+resource "aws_security_group" "redis" {
+  name        = "${local.name_prefix}-redis"
+  description = "Firewall for the ElastiCache Redis cluster."
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    description     = "Redis from compute SG only"
+    from_port       = 6379
+    to_port         = 6379
+    protocol        = "tcp"
+    security_groups = [aws_security_group.compute.id]
+  }
+
+  egress {
+    description = "All egress (rarely needed but kept open by default)"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "${local.name_prefix}-redis-sg"
+  }
+}

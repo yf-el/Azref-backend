@@ -8,6 +8,8 @@ import logging
 import re
 from urllib.parse import quote
 
+from cache_semantic import cache_exact
+
 from app.agent.prompt import SYSTEM_PROMPT
 from app.agent.tools import TOOL_SCHEMAS, execute_tool
 from app.agent.types import AgentResponse, Source, ToolStep
@@ -22,10 +24,12 @@ NO_RESULTS_ANSWER = (
 logger = logging.getLogger(__name__)
 
 
+@cache_exact(namespace="agent:answer", ttl=86400, prompt_arg="question", loads=AgentResponse.model_validate)
 async def run_agent(question: str) -> AgentResponse:
     """
     Run the agent loop for a user question.
     Returns an AgentResponse with answer, sources, and reasoning steps.
+    Cached for 24h on exact question match (Redis); see [[cache_semantic]] lib.
     """
     cascade = get_cascade()
 
