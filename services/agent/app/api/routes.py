@@ -7,13 +7,13 @@ from pydantic import BaseModel
 from app.agent.lang import detect_lang
 from app.agent.loop import run_agent
 from app.agent.types import ChatResponse, PublicSource
-from app.kafka_client import get_producer
 from app.llm.cascade import get_cascade
 from auth_clerk import ClerkClaims, get_current_clerk_user
 from kafka_events import (
     TOPIC_AGENT_EVENTS,
     AgentQuestionAnsweredPayload,
     AgentQuestionAnsweredV1,
+    producer as kafka_producer,
 )
 
 logger = logging.getLogger(__name__)
@@ -58,7 +58,7 @@ async def chat(
             duration_ms=duration_ms,
         ),
     )
-    get_producer().publish_nowait(TOPIC_AGENT_EVENTS, event, key=claims.sub)
+    kafka_producer.publish_nowait(TOPIC_AGENT_EVENTS, event, key=claims.sub)
 
     return ChatResponse(
         answer=response.answer,

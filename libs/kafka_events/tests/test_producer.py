@@ -30,11 +30,6 @@ def mock_aiokafka(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
 
     mock_class = MagicMock(return_value=mock_instance)
     monkeypatch.setattr("kafka_events.producer.AIOKafkaProducer", mock_class)
-    # Avoid touching the network / cert store for SSL context creation.
-    monkeypatch.setattr(
-        "kafka_events.producer.create_ssl_context", lambda: MagicMock(name="ssl_ctx")
-    )
-    # Expose both the class (to assert constructor kwargs) and the instance.
     mock_class.instance = mock_instance  # type: ignore[attr-defined]
     return mock_class
 
@@ -55,13 +50,21 @@ def _event() -> AgentQuestionAnsweredV1:
     )
 
 
-class TestStartStop:
+class TestLazyInit:
     @pytest.mark.asyncio
-    async def test_start_creates_aiokafka_producer_with_sasl_ssl_config(
+    async def test_constructing_does_not_start_aiokafka(
+        self, config: KafkaConfig, mock_aiokafka: MagicMock
+    ) -> None:
+        # The whole point of lazy init: no broker connection at __init__.
+        KafkaEventProducer(config)
+        mock_aiokafka.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_first_publish_triggers_init_with_sasl_ssl_config(
         self, config: KafkaConfig, mock_aiokafka: MagicMock
     ) -> None:
         producer = KafkaEventProducer(config)
-        await producer.start()
+        await producer.publish("azref.agent.events", _event(), key="user_42")
 
         mock_aiokafka.assert_called_once()
         kwargs = mock_aiokafka.call_args.kwargs
@@ -77,26 +80,46 @@ class TestStartStop:
         mock_aiokafka.instance.start.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_start_is_idempotent(
+    async def test_subsequent_publishes_reuse_underlying_producer(
         self, config: KafkaConfig, mock_aiokafka: MagicMock
     ) -> None:
         producer = KafkaEventProducer(config)
-        await producer.start()
-        await producer.start()
+        await producer.publish("azref.agent.events", _event(), key="user_42")
+        await producer.publish("azref.agent.events", _event(), key="user_42")
+        await producer.publish("azref.agent.events", _event(), key="user_42")
+        # Init happens exactly once, then producer is reused.
+        mock_aiokafka.assert_called_once()
+        mock_aiokafka.instance.start.assert_awaited_once()
+        assert mock_aiokafka.instance.send_and_wait.await_count == 3
+
+    @pytest.mark.asyncio
+    async def test_concurrent_first_publishes_init_once(
+        self, config: KafkaConfig, mock_aiokafka: MagicMock
+    ) -> None:
+        # The asyncio.Lock inside _ensure_started must prevent two concurrent
+        # first-time publishes from creating two AIOKafkaProducer instances.
+        producer = KafkaEventProducer(config)
+        await asyncio.gather(
+            producer.publish("azref.agent.events", _event(), key="user_42"),
+            producer.publish("azref.agent.events", _event(), key="user_42"),
+            producer.publish("azref.agent.events", _event(), key="user_42"),
+        )
         mock_aiokafka.assert_called_once()
         mock_aiokafka.instance.start.assert_awaited_once()
 
+
+class TestStop:
     @pytest.mark.asyncio
-    async def test_stop_calls_underlying_stop(
+    async def test_stop_after_init_calls_underlying_stop(
         self, config: KafkaConfig, mock_aiokafka: MagicMock
     ) -> None:
         producer = KafkaEventProducer(config)
-        await producer.start()
+        await producer.publish("azref.agent.events", _event(), key="user_42")
         await producer.stop()
         mock_aiokafka.instance.stop.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_stop_without_start_is_noop(
+    async def test_stop_before_any_publish_is_noop(
         self, config: KafkaConfig, mock_aiokafka: MagicMock
     ) -> None:
         producer = KafkaEventProducer(config)
@@ -104,29 +127,22 @@ class TestStartStop:
         mock_aiokafka.instance.stop.assert_not_awaited()
 
     @pytest.mark.asyncio
-    async def test_stop_then_restart_creates_new_underlying(
+    async def test_stop_then_publish_reinitializes(
         self, config: KafkaConfig, mock_aiokafka: MagicMock
     ) -> None:
         producer = KafkaEventProducer(config)
-        await producer.start()
+        await producer.publish("azref.agent.events", _event(), key="user_42")
         await producer.stop()
-        await producer.start()
+        await producer.publish("azref.agent.events", _event(), key="user_42")
         assert mock_aiokafka.call_count == 2
 
 
 class TestPublish:
     @pytest.mark.asyncio
-    async def test_publish_before_start_raises(self, config: KafkaConfig) -> None:
-        producer = KafkaEventProducer(config)
-        with pytest.raises(RuntimeError, match="start"):
-            await producer.publish("azref.agent.events", _event(), key="user_42")
-
-    @pytest.mark.asyncio
     async def test_publish_serializes_to_json_bytes(
         self, config: KafkaConfig, mock_aiokafka: MagicMock
     ) -> None:
         producer = KafkaEventProducer(config)
-        await producer.start()
         event = _event()
         await producer.publish("azref.agent.events", event, key="user_42")
 
@@ -144,7 +160,6 @@ class TestPublish:
         self, config: KafkaConfig, mock_aiokafka: MagicMock
     ) -> None:
         producer = KafkaEventProducer(config)
-        await producer.start()
         await producer.publish("azref.agent.events", _event(), key="user_42")
         send = mock_aiokafka.instance.send_and_wait
         assert send.call_args.kwargs["key"] == b"user_42"
@@ -155,8 +170,18 @@ class TestPublish:
     ) -> None:
         mock_aiokafka.instance.send_and_wait.side_effect = RuntimeError("broker down")
         producer = KafkaEventProducer(config)
-        await producer.start()
         with pytest.raises(RuntimeError, match="broker down"):
+            await producer.publish("azref.agent.events", _event(), key="user_42")
+
+    @pytest.mark.asyncio
+    async def test_publish_propagates_init_errors(
+        self, config: KafkaConfig, mock_aiokafka: MagicMock
+    ) -> None:
+        # If broker is unreachable, `start()` raises — `publish` must surface it
+        # so the caller can decide. (publish_nowait swallows separately.)
+        mock_aiokafka.instance.start.side_effect = RuntimeError("kafka unreachable")
+        producer = KafkaEventProducer(config)
+        with pytest.raises(RuntimeError, match="kafka unreachable"):
             await producer.publish("azref.agent.events", _event(), key="user_42")
 
 
@@ -166,22 +191,22 @@ class TestPublishNowait:
         self, config: KafkaConfig, mock_aiokafka: MagicMock
     ) -> None:
         producer = KafkaEventProducer(config)
-        await producer.start()
         task = producer.publish_nowait("azref.agent.events", _event(), key="user_42")
         assert isinstance(task, asyncio.Task)
         await task
         mock_aiokafka.instance.send_and_wait.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_swallows_broker_errors_and_logs(
+    async def test_swallows_init_errors(
         self,
         config: KafkaConfig,
         mock_aiokafka: MagicMock,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
-        mock_aiokafka.instance.send_and_wait.side_effect = RuntimeError("broker down")
+        # Kafka unreachable at first publish — user response must NEVER fail
+        # because of this. The error is logged with full event context.
+        mock_aiokafka.instance.start.side_effect = RuntimeError("kafka unreachable")
         producer = KafkaEventProducer(config)
-        await producer.start()
         event = _event()
 
         with caplog.at_level(logging.ERROR, logger="kafka_events.producer"):
@@ -193,18 +218,38 @@ class TestPublishNowait:
         assert any(
             "kafka_publish_failed" in record.message for record in caplog.records
         )
-        # event_id must be in the log record for traceability.
         assert any(
             getattr(record, "event_id", None) == str(event.event_id)
             for record in caplog.records
         )
 
     @pytest.mark.asyncio
+    async def test_swallows_broker_errors(
+        self,
+        config: KafkaConfig,
+        mock_aiokafka: MagicMock,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        mock_aiokafka.instance.send_and_wait.side_effect = RuntimeError("broker down")
+        producer = KafkaEventProducer(config)
+        event = _event()
+
+        with caplog.at_level(logging.ERROR, logger="kafka_events.producer"):
+            task = producer.publish_nowait(
+                "azref.agent.events", event, key="user_42"
+            )
+            await task  # must not raise
+
+        assert any(
+            "kafka_publish_failed" in record.message for record in caplog.records
+        )
+
+    @pytest.mark.asyncio
     async def test_does_not_block_caller(
         self, config: KafkaConfig, mock_aiokafka: MagicMock
     ) -> None:
-        # send_and_wait sleeps to simulate a slow broker; caller must return
-        # immediately because publish_nowait wraps in create_task.
+        # send_and_wait sleeps to simulate a slow broker; the caller of
+        # publish_nowait must return immediately because we wrap in create_task.
         slow = asyncio.Event()
 
         async def slow_send(*args: object, **kwargs: object) -> None:
@@ -212,33 +257,23 @@ class TestPublishNowait:
 
         mock_aiokafka.instance.send_and_wait.side_effect = slow_send
         producer = KafkaEventProducer(config)
-        await producer.start()
 
         task = producer.publish_nowait("azref.agent.events", _event(), key="user_42")
+        # Yield once to let the task progress past _ensure_started + into send.
+        await asyncio.sleep(0)
+        await asyncio.sleep(0)
         assert not task.done()
         slow.set()
         await task
         assert task.done()
 
 
-class TestLifespan:
-    @pytest.mark.asyncio
-    async def test_starts_on_enter_and_stops_on_exit(
-        self, config: KafkaConfig, mock_aiokafka: MagicMock
-    ) -> None:
-        producer = KafkaEventProducer(config)
-        async with producer.lifespan() as yielded:
-            assert yielded is producer
-            mock_aiokafka.instance.start.assert_awaited_once()
-            mock_aiokafka.instance.stop.assert_not_awaited()
-        mock_aiokafka.instance.stop.assert_awaited_once()
+class TestModuleSingleton:
+    def test_singleton_is_exported_and_lazy(self) -> None:
+        from kafka_events import producer
 
-    @pytest.mark.asyncio
-    async def test_stops_even_on_exception(
-        self, config: KafkaConfig, mock_aiokafka: MagicMock
-    ) -> None:
-        producer = KafkaEventProducer(config)
-        with pytest.raises(ValueError, match="boom"):
-            async with producer.lifespan():
-                raise ValueError("boom")
-        mock_aiokafka.instance.stop.assert_awaited_once()
+        # Importing the module-level singleton must NOT have started anything,
+        # NOT have required env vars, NOT have touched the network.
+        assert isinstance(producer, KafkaEventProducer)
+        assert producer._producer is None
+        assert producer._explicit_config is None

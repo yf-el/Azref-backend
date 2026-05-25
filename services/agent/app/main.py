@@ -5,11 +5,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from cache_semantic import close_redis, get_redis
+from kafka_events import producer as kafka_producer
 
 from app.api.routes import router
 from app.config import settings
 from app.db.client import close_pool, get_pool
-from app.kafka_client import close_producer, init_producer
 
 logging.basicConfig(
     level=settings.log_level,
@@ -26,10 +26,10 @@ async def lifespan(app: FastAPI):
     logging.info("Database pool initialized")
     get_redis()
     logging.info("Redis client initialized")
-    await init_producer()
-    logging.info("Kafka producer initialized")
     yield
-    await close_producer()
+    # Kafka producer is lazy-initialized on first publish — no init step here.
+    # On shutdown we still flush pending sends and close the broker socket.
+    await kafka_producer.stop()
     logging.info("Kafka producer closed")
     await close_redis()
     logging.info("Redis client closed")
