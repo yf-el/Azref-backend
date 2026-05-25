@@ -2,7 +2,7 @@
 Pydantic models for agent input/output.
 """
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 class Source(BaseModel):
@@ -42,3 +42,10 @@ class ChatResponse(BaseModel):
     answer: str
     sources: list[PublicSource]
     fallback_url: str | None = None
+
+    @field_validator("sources", mode="after")
+    @classmethod
+    def _drop_documents_without_pdf(cls, sources: list[PublicSource]) -> list[PublicSource]:
+        # Une source `document` sans pdf_url n'est pas actionnable côté UI (pas de lien à suivre).
+        # Articles/lois n'ont pas vocation à avoir un pdf_url, on les garde.
+        return [s for s in sources if s.type != "document" or s.pdf_url]
