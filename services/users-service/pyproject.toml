@@ -1,0 +1,33 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "users-service"
+version = "0.1.0"
+description = "Azref users service"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi==0.136.3",
+    "uvicorn==0.48.0",
+    "pydantic==2.13.4",
+    "pydantic-settings==2.14.1",
+    "sqlalchemy==2.0.49",
+    "asyncpg==0.31.0",
+    "greenlet==3.5.1",
+    "alembic==1.18.4",
+    "httpx==0.28.1",
+    "python-dotenv==1.2.2",
+    "auth-clerk",
+]
+
+[dependency-groups]
+dev = [
+    "pytest==9.0.3",
+]
+
+[tool.uv.sources]
+auth-clerk = { workspace = true }
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]

@@ -10,6 +10,9 @@ venv/
 .coverage
 htmlcov/
 
+# uv (lockfile IS committed — only ignore caches)
+.uv-cache/
+
 # Env / secrets
 .env
 .env.local

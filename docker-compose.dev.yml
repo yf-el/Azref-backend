@@ -40,9 +40,9 @@ services:
       postgres:
         condition: service_healthy
     volumes:
-      - ./services/users-service/app:/app/app
-      - ./libs:/libs
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /app/app --reload-dir /libs
+      - ./services/users-service/app:/app/services/users-service/app
+      - ./libs:/app/libs
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /app/services/users-service/app --reload-dir /app/libs
 
   agent:
     build:
@@ -60,9 +60,9 @@ services:
     ports:
       - "8001:8000"
     volumes:
-      - ./services/agent/app:/app/app
-      - ./libs:/libs
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /app/app --reload-dir /libs
+      - ./services/agent/app:/app/services/agent/app
+      - ./libs:/app/libs
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /app/services/agent/app --reload-dir /app/libs
 
 volumes:
   postgres_data:

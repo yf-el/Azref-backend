@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cache-semantic"
+version = "0.1.0"
+description = "Redis-backed exact + semantic cache helpers"
+requires-python = ">=3.13"
+dependencies = [
+    "redis==7.4.0",
+    "numpy==2.4.6",
+    "pydantic==2.13.4",
+]
+
+[dependency-groups]
+dev = [
+    "pytest==9.0.3",
+    "pytest-asyncio==1.3.0",
+    "fakeredis==2.35.1",
+    "sortedcontainers==2.4.0",
+]
+
+[tool.setuptools]
+packages = ["cache_semantic"]
+package-dir = { "cache_semantic" = "." }
