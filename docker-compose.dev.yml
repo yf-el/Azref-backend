@@ -19,11 +19,11 @@ services:
     build:
       context: .
       dockerfile: services/users-service/Dockerfile
+    env_file:
+      - ./services/users-service/.env
     environment:
       DATABASE_URL: postgresql+asyncpg://azref:azref@postgres:5432/azref
       LOG_LEVEL: INFO
-      CLERK_ISSUER: ${CLERK_ISSUER:-}
-      CLERK_JWKS_URL: ${CLERK_JWKS_URL:-}
     ports:
       - "8000:8000"
     depends_on:
@@ -38,16 +38,11 @@ services:
     build:
       context: .
       dockerfile: services/agent/Dockerfile
+    env_file:
+      - ./services/agent/.env
     environment:
       STAGE: dev
       LOG_LEVEL: INFO
-      DATABASE_URL: ${AGENT_DATABASE_URL:-}
-      GROQ_API_KEY: ${GROQ_API_KEY:-}
-      CEREBRAS_API_KEY: ${CEREBRAS_API_KEY:-}
-      MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
-      CLERK_ISSUER: ${CLERK_ISSUER:-}
-      CLERK_JWKS_URL: ${CLERK_JWKS_URL:-}
-      CORS_ORIGINS: ${AGENT_CORS_ORIGINS:-http://localhost:3000}
     ports:
       - "8001:8000"
     volumes:
