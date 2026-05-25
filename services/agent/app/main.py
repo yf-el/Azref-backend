@@ -37,9 +37,9 @@ app = FastAPI(
     description="AI agent for Moroccan law — answers legal questions with citations.",
     version=settings.service_version,
     lifespan=lifespan,
-    docs_url=None if settings.is_production else "/docs",
-    redoc_url=None if settings.is_production else "/redoc",
-    openapi_url=None if settings.is_production else "/openapi.json",
+    # docs_url=None if settings.is_production else "/docs",
+    # redoc_url=None if settings.is_production else "/redoc",
+    # openapi_url=None if settings.is_production else "/openapi.json",
 )
 
 if settings.is_production:
