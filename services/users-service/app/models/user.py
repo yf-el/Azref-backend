@@ -20,7 +20,9 @@ class User(BaseModel):
         *,
         clerk_user_id: str,
         email: str | None,
-    ) -> "User":
+    ) -> tuple["User", bool]:
+        """Returns (user, created). `created=True` iff a new row was inserted —
+        the caller uses this signal to emit a user.signed_up event."""
         result = await session.execute(
             select(cls).where(cls.clerk_user_id == clerk_user_id)
         )
@@ -30,7 +32,8 @@ class User(BaseModel):
             session.add(user)
             await session.commit()
             await session.refresh(user)
-        return user
+            return user, True
+        return user, False
 
     @classmethod
     async def update(

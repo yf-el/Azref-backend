@@ -5,8 +5,15 @@ from kafka_events.schemas import (
     AgentQuestionAnsweredPayload,
     AgentQuestionAnsweredV1,
     BaseEvent,
+    UserEvent,
+    UserOnboardedPayload,
+    UserOnboardedV1,
+    UserProfileUpdatedPayload,
+    UserProfileUpdatedV1,
+    UserSignedUpPayload,
+    UserSignedUpV1,
 )
-from kafka_events.topics import TOPIC_AGENT_EVENTS
+from kafka_events.topics import TOPIC_AGENT_EVENTS, TOPIC_USER_EVENTS
 
 __all__ = [
     "AgentEvent",
@@ -16,4 +23,12 @@ __all__ = [
     "KafkaConfig",
     "KafkaEventProducer",
     "TOPIC_AGENT_EVENTS",
+    "TOPIC_USER_EVENTS",
+    "UserEvent",
+    "UserOnboardedPayload",
+    "UserOnboardedV1",
+    "UserProfileUpdatedPayload",
+    "UserProfileUpdatedV1",
+    "UserSignedUpPayload",
+    "UserSignedUpV1",
 ]
