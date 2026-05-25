@@ -59,3 +59,22 @@ output "ssm_users_service_redis_url_arn" {
 output "ssm_agent_redis_url_arn" {
   value = aws_ssm_parameter.agent_redis_url.arn
 }
+
+# --- Kafka (shared) -----------------------------------------------------
+
+output "shared_ssm_path_prefix" {
+  value       = local.shared_ssm_path_prefix
+  description = "Path under which cross-service shared params (Kafka, ...) live in SSM."
+}
+
+output "ssm_kafka_bootstrap_servers_arn" {
+  value = aws_ssm_parameter.kafka_bootstrap_servers.arn
+}
+
+output "ssm_kafka_api_key_arn" {
+  value = aws_ssm_parameter.kafka_api_key.arn
+}
+
+output "ssm_kafka_api_secret_arn" {
+  value = aws_ssm_parameter.kafka_api_secret.arn
+}

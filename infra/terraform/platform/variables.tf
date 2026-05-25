@@ -85,3 +85,26 @@ variable "agent_mistral_api_key" {
   sensitive   = true
   default     = ""
 }
+
+# --- Kafka (shared across services) -------------------------------------
+# Confluent Cloud Basic cluster. Same credentials consumed by every service
+# that produces or consumes events (agent, users-service, future workers).
+# Stored once under /<project>/<env>/shared/KAFKA_* and exposed to each
+# service via an explicit IAM statement scoped to KAFKA_* (least-privilege).
+
+variable "kafka_bootstrap_servers" {
+  type        = string
+  description = "Confluent Cloud bootstrap servers URL (host:port). Found in Cluster Settings."
+}
+
+variable "kafka_api_key" {
+  type        = string
+  description = "Confluent Cloud API Key for SASL_SSL auth."
+  sensitive   = true
+}
+
+variable "kafka_api_secret" {
+  type        = string
+  description = "Confluent Cloud API Secret for SASL_SSL auth."
+  sensitive   = true
+}

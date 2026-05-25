@@ -84,7 +84,9 @@ resource "aws_iam_role_policy_attachment" "ssm_core" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
-# Read SSM params under our agent prefix only.
+# Read SSM params under our agent prefix, plus the shared Kafka creds.
+# Shared path is scoped narrowly to KAFKA_* — agent must not see other
+# cross-service params it doesn't need.
 data "aws_iam_policy_document" "ssm_read" {
   statement {
     actions = [
@@ -95,6 +97,16 @@ data "aws_iam_policy_document" "ssm_read" {
     resources = [
       "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${data.terraform_remote_state.platform.outputs.agent_ssm_path_prefix}",
       "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${data.terraform_remote_state.platform.outputs.agent_ssm_path_prefix}/*",
+    ]
+  }
+
+  statement {
+    actions = [
+      "ssm:GetParameter",
+      "ssm:GetParameters",
+    ]
+    resources = [
+      "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${data.terraform_remote_state.platform.outputs.shared_ssm_path_prefix}/KAFKA_*",
     ]
   }
 
