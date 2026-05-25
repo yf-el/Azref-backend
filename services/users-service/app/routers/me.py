@@ -7,7 +7,6 @@ from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_session
-from app.kafka_client import get_producer
 from app.models import User
 from app.schemas import UserOut, UserUpdate
 from auth_clerk import ClerkClaims, get_current_clerk_user
@@ -20,6 +19,7 @@ from kafka_events import (
     UserProfileUpdatedV1,
     UserSignedUpPayload,
     UserSignedUpV1,
+    producer as kafka_producer,
 )
 
 logger = logging.getLogger(__name__)
@@ -52,7 +52,7 @@ def _emit_signed_up(
         user_id=clerk_user_id,
         payload=UserSignedUpPayload(user_email=email, attribution=attribution),
     )
-    get_producer().publish_nowait(TOPIC_USER_EVENTS, event, key=clerk_user_id)
+    kafka_producer.publish_nowait(TOPIC_USER_EVENTS, event, key=clerk_user_id)
 
 
 @router.get("/me", response_model=UserOut)
@@ -113,7 +113,7 @@ async def patch_me(
                 usage_type=user.usage_type,  # type: ignore[arg-type]
             ),
         )
-        get_producer().publish_nowait(TOPIC_USER_EVENTS, onboarded, key=claims.sub)
+        kafka_producer.publish_nowait(TOPIC_USER_EVENTS, onboarded, key=claims.sub)
     elif was_onboarded:
         updated = UserProfileUpdatedV1(
             user_id=claims.sub,
@@ -123,7 +123,7 @@ async def patch_me(
                 usage_type=user.usage_type,
             ),
         )
-        get_producer().publish_nowait(TOPIC_USER_EVENTS, updated, key=claims.sub)
+        kafka_producer.publish_nowait(TOPIC_USER_EVENTS, updated, key=claims.sub)
     # else: partial update that did NOT complete onboarding → no event emitted
 
     return user

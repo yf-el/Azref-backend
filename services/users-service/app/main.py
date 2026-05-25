@@ -3,18 +3,18 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from kafka_events import producer as kafka_producer
 
 from app.config import settings
-from app.kafka_client import close_producer, init_producer
 from app.routers import me as me_router
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await init_producer()
-    logging.info("Kafka producer initialized")
+    # Kafka producer is lazy-initialized on first publish — no init step here.
+    # On shutdown we still flush pending sends and close the broker socket.
     yield
-    await close_producer()
+    await kafka_producer.stop()
     logging.info("Kafka producer closed")
 
 

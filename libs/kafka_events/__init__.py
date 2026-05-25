@@ -1,5 +1,5 @@
 from kafka_events.config import KafkaConfig
-from kafka_events.producer import KafkaEventProducer
+from kafka_events.producer import KafkaEventProducer, producer
 from kafka_events.schemas import (
     AgentEvent,
     AgentQuestionAnsweredPayload,
@@ -33,4 +33,5 @@ __all__ = [
     "UserProfileUpdatedV1",
     "UserSignedUpPayload",
     "UserSignedUpV1",
+    "producer",
 ]
