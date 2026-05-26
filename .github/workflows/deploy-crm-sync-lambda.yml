@@ -36,9 +36,11 @@ jobs:
           python-version: '3.13'
 
       - name: Install test deps
-        run: pip install pytest pytest-asyncio pydantic
-        # libs/kafka_events is imported transitively by handler tests; deps
-        # are minimal because tests stub the SF adapter via a fake client.
+        # libs/kafka_events.__init__ eagerly imports KafkaConfig (Pydantic
+        # Settings), which is why pydantic-settings is needed even though
+        # the Lambda itself only consumes events. The SF adapter is stubbed
+        # in tests via FakeCrmClient, so simple-salesforce isn't required.
+        run: pip install pytest pytest-asyncio pydantic pydantic-settings
 
       - name: Run unit tests
         env:
