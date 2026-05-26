@@ -1,0 +1,66 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Azref CRM sync — Kafka events to Salesforce Contact upsert (Lambda consumer)
+
+Parameters:
+  SfConsumerKey:
+    Type: String
+    NoEcho: true
+    Description: Consumer Key from the Salesforce External Client App
+
+  SfUsername:
+    Type: String
+    Description: Salesforce integration user username (JWT `sub` claim)
+
+  SfPrivateKey:
+    Type: String
+    NoEcho: true
+    Description: RSA private key (PEM, multi-line) paired with the cert uploaded to SF
+
+  SfDomain:
+    Type: String
+    Default: login
+    AllowedValues: [login, test]
+    Description: "'login' for prod/dev orgs, 'test' for sandboxes"
+
+  Stage:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, prod]
+
+Globals:
+  Function:
+    Runtime: python3.13
+    MemorySize: 256
+    Timeout: 30
+    Architectures: [arm64]
+
+Resources:
+  CrmSyncFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: makefile
+    Properties:
+      FunctionName: !Sub azref-${Stage}-crm-sync
+      CodeUri: ./
+      Handler: app.handler.lambda_handler
+      Environment:
+        Variables:
+          SF_CONSUMER_KEY: !Ref SfConsumerKey
+          SF_USERNAME: !Ref SfUsername
+          SF_PRIVATE_KEY: !Ref SfPrivateKey
+          SF_DOMAIN: !Ref SfDomain
+      LoggingConfig:
+        LogFormat: JSON
+        ApplicationLogLevel: INFO
+
+Outputs:
+  CrmSyncFunctionArn:
+    Description: Lambda ARN — paste this into the Confluent AWS Lambda Sink Connector
+    Value: !GetAtt CrmSyncFunction.Arn
+    Export:
+      Name: !Sub ${AWS::StackName}-FunctionArn
+
+  CrmSyncFunctionName:
+    Description: Lambda function name
+    Value: !Ref CrmSyncFunction

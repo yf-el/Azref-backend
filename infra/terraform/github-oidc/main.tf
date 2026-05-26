@@ -127,6 +127,115 @@ data "aws_iam_policy_document" "deploy" {
     ]
     resources = ["*"]
   }
+
+  # ---------------------------------------------------------------------------
+  # SAM / Lambda deploy path — used by services packaged as Lambda (e.g.
+  # crm-sync-lambda). Each statement is scoped to the `azref-*` prefix so the
+  # role can't touch resources outside the project. See `services/crm-sync-lambda/`.
+  # ---------------------------------------------------------------------------
+
+  # 5. CloudFormation — SAM is a CFN dialect, every deploy goes through CFN.
+  statement {
+    sid     = "CloudFormationDeploy"
+    actions = ["cloudformation:*"]
+    resources = [
+      "arn:aws:cloudformation:${var.aws_region}:${data.aws_caller_identity.current.account_id}:stack/azref-*/*",
+      "arn:aws:cloudformation:${var.aws_region}:${data.aws_caller_identity.current.account_id}:changeSet/*",
+    ]
+  }
+
+  # SAM CLI calls these globally (no resource arn possible) — read-only, safe.
+  statement {
+    sid = "CloudFormationListGlobal"
+    actions = [
+      "cloudformation:ListStacks",
+      "cloudformation:DescribeStackResource",
+      "cloudformation:ValidateTemplate",
+    ]
+    resources = ["*"]
+  }
+
+  # 6. Lambda — CRUD on functions prefixed `azref-`.
+  statement {
+    sid     = "LambdaDeploy"
+    actions = ["lambda:*"]
+    resources = [
+      "arn:aws:lambda:${var.aws_region}:${data.aws_caller_identity.current.account_id}:function:azref-*",
+    ]
+  }
+
+  # GetAccountSettings / ListFunctions have no per-resource ARN.
+  statement {
+    sid       = "LambdaListGlobal"
+    actions   = ["lambda:GetAccountSettings", "lambda:ListFunctions"]
+    resources = ["*"]
+  }
+
+  # 7. IAM — SAM creates the Lambda execution role + must PassRole it.
+  # Scoped tight to `azref-*` role names so this role can't escalate to admin.
+  statement {
+    sid = "IamForLambdaExecutionRoles"
+    actions = [
+      "iam:CreateRole",
+      "iam:DeleteRole",
+      "iam:GetRole",
+      "iam:PassRole",
+      "iam:PutRolePolicy",
+      "iam:DeleteRolePolicy",
+      "iam:GetRolePolicy",
+      "iam:AttachRolePolicy",
+      "iam:DetachRolePolicy",
+      "iam:ListAttachedRolePolicies",
+      "iam:ListRolePolicies",
+      "iam:TagRole",
+      "iam:UntagRole",
+    ]
+    resources = [
+      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/azref-*",
+    ]
+  }
+
+  # 8. S3 — SAM uploads the Lambda zip to its managed bucket before CFN
+  # references it. `--resolve-s3` provisions the bucket on first deploy.
+  statement {
+    sid     = "SamArtifactsBucketIo"
+    actions = ["s3:*"]
+    resources = [
+      "arn:aws:s3:::aws-sam-cli-managed-default-*",
+      "arn:aws:s3:::aws-sam-cli-managed-default-*/*",
+    ]
+  }
+
+  # First-deploy bucket provisioning needs to act globally (CreateBucket
+  # doesn't accept a resource constraint).
+  statement {
+    sid = "SamArtifactsBucketCreate"
+    actions = [
+      "s3:CreateBucket",
+      "s3:PutBucketPolicy",
+      "s3:PutBucketVersioning",
+      "s3:PutBucketTagging",
+      "s3:PutEncryptionConfiguration",
+      "s3:ListAllMyBuckets",
+    ]
+    resources = ["*"]
+  }
+
+  # 9. CloudWatch Logs — SAM provisions the /aws/lambda/<fn> log group at
+  # deploy time. Without this perm, deploy fails mid-way with a cryptic error.
+  statement {
+    sid = "LambdaLogGroups"
+    actions = [
+      "logs:CreateLogGroup",
+      "logs:DescribeLogGroups",
+      "logs:PutRetentionPolicy",
+      "logs:TagResource",
+    ]
+    resources = [
+      "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/azref-*",
+      "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/azref-*:*",
+    ]
+  }
 }
 
 resource "aws_iam_role_policy" "deploy" {
