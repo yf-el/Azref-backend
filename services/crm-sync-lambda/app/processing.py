@@ -7,6 +7,7 @@ per-batch counters (processed / skipped / failed) for observability.
 Pure async — no Lambda or AWS coupling. Drives the unit tests with a
 fake CrmClient.
 """
+
 from __future__ import annotations
 
 import json
@@ -43,11 +44,11 @@ async def process_batch(
             counts["failed"] += 1
             continue
 
-        if not isinstance(user_event, UserOnboardedV1):
-            # Other event types on the same topic (signed_up,
-            # profile_updated) are intentionally ignored in v1.
-            counts["skipped"] += 1
-            continue
+        # if not isinstance(user_event, UserOnboardedV1):
+        #     # Other event types on the same topic (signed_up,
+        #     # profile_updated) are intentionally ignored in v1.
+        #     counts["skipped"] += 1
+        #     continue
 
         try:
             contact = user_onboarded_to_contact(user_event)
