@@ -75,7 +75,11 @@ jobs:
           use-installer: true
 
       - name: SAM build
-        run: sam build
+        # --build-in-source runs the Makefile directly in the source dir
+        # so `../../libs/crm` resolves to the real repo path instead of a
+        # sandboxed copy. Required because SAM CLI's BuildInSource metadata
+        # is not yet honored by the custom Makefile builder in all versions.
+        run: sam build --build-in-source
 
       - name: SAM deploy
         run: |
