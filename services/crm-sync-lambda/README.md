@@ -2,6 +2,24 @@
 
 AWS Lambda consumer that listens to Kafka events via the **Confluent Cloud AWS Lambda Sink Connector** and upserts onboarded users into Salesforce as Contacts.
 
+## Where to start (code tour)
+
+The entry point is **`app/handler.py::lambda_handler`** — AWS Lambda calls this on every invocation.
+
+Reading order, from outside in:
+
+```
+1. app/handler.py        ← AWS entry point. Thin: builds the CRM client, delegates.
+2. app/processing.py     ← Business logic: walks records, filters, dispatches upserts.
+3. app/events.py         ← Confluent record format: extract + parse to UserEvent.
+4. app/mapping.py        ← Pure function UserOnboardedV1 → CrmContact (vendor-neutral).
+   └── (then leaves the service)
+5. libs/crm/port.py      ← The CRM contract (Protocol). Adapter-agnostic.
+6. libs/crm/adapters/salesforce.py  ← The concrete Salesforce implementation.
+```
+
+Each file has a one-paragraph module docstring stating its role.
+
 ## Dependencies (to add to `requirements.txt`)
 
 ```

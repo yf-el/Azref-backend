@@ -4,7 +4,7 @@ from uuid import uuid4
 
 import pytest
 
-from app.handler import _process
+from app.processing import process_batch
 from crm.models import CrmContact
 
 
@@ -50,7 +50,7 @@ def test_processes_onboarded_event():
     client = FakeCrmClient()
     event = [_onboarded_record(user_id="usr_42", email="z@z.com")]
 
-    result = asyncio.run(_process(event, client))
+    result = asyncio.run(process_batch(event, client))
 
     assert result == {"processed": 1, "skipped": 0, "failed": 0}
     assert len(client.upserts) == 1
@@ -62,7 +62,7 @@ def test_filters_non_onboarded_events():
     client = FakeCrmClient()
     event = [_signed_up_record(), _onboarded_record()]
 
-    result = asyncio.run(_process(event, client))
+    result = asyncio.run(process_batch(event, client))
 
     assert result == {"processed": 1, "skipped": 1, "failed": 0}
     assert len(client.upserts) == 1
@@ -72,7 +72,7 @@ def test_handles_malformed_record():
     client = FakeCrmClient()
     event = [{"value": "not-json", "topic": "azref.user.events"}]
 
-    result = asyncio.run(_process(event, client))
+    result = asyncio.run(process_batch(event, client))
 
     assert result == {"processed": 0, "skipped": 0, "failed": 1}
     assert client.upserts == []
@@ -83,7 +83,7 @@ def test_failed_upsert_does_not_block_batch():
     client.fail_next = True
     event = [_onboarded_record(user_id="usr_a"), _onboarded_record(user_id="usr_b")]
 
-    result = asyncio.run(_process(event, client))
+    result = asyncio.run(process_batch(event, client))
 
     assert result == {"processed": 1, "skipped": 0, "failed": 1}
     assert len(client.upserts) == 1
@@ -94,6 +94,6 @@ def test_accepts_records_field_envelope():
     client = FakeCrmClient()
     event = {"records": [_onboarded_record()]}
 
-    result = asyncio.run(_process(event, client))
+    result = asyncio.run(process_batch(event, client))
 
     assert result == {"processed": 1, "skipped": 0, "failed": 0}
