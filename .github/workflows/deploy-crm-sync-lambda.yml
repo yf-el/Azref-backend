@@ -93,7 +93,7 @@ jobs:
             --parameter-overrides \
               "SfConsumerKey=${{ secrets.SF_CONSUMER_KEY }}" \
               "SfUsername=${{ vars.SF_USERNAME }}" \
-              "SfPrivateKey=${{ secrets.SF_PRIVATE_KEY }}" \
+              "SfPrivateKeySsmParam=${{ vars.SF_PRIVATE_KEY_SSM_PARAM }}" \
               "SfDomain=${{ vars.SF_DOMAIN }}" \
               "Stage=dev"
 
