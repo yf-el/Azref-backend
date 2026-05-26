@@ -20,32 +20,32 @@ permissions:
   contents: read
 
 jobs:
-  # test:
-  #   runs-on: ubuntu-latest
-  #   defaults:
-  #     run:
-  #       working-directory: services/crm-sync-lambda
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/crm-sync-lambda
 
-  #   steps:
-  #     - name: Checkout
-  #       uses: actions/checkout@v4
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-  #     - name: Set up Python
-  #       uses: actions/setup-python@v5
-  #       with:
-  #         python-version: '3.13'
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
 
-  #     - name: Install test deps
-  #       # libs/kafka_events.__init__ eagerly imports KafkaConfig (Pydantic
-  #       # Settings), which is why pydantic-settings is needed even though
-  #       # the Lambda itself only consumes events. The SF adapter is stubbed
-  #       # in tests via FakeCrmClient, so simple-salesforce isn't required.
-  #       run: pip install pytest pytest-asyncio pydantic pydantic-settings aiokafka # TODO : review this step && keep only the really needed packages 
+      - name: Install test deps
+        # libs/kafka_events.__init__ eagerly imports KafkaConfig (Pydantic
+        # Settings), which is why pydantic-settings is needed even though
+        # the Lambda itself only consumes events. The SF adapter is stubbed
+        # in tests via FakeCrmClient, so simple-salesforce isn't required.
+        run: pip install pytest pytest-asyncio pydantic pydantic-settings aiokafka # TODO : review this step && keep only the really needed packages 
 
-  #     - name: Run unit tests
-  #       env:
-  #         PYTHONPATH: .:../../libs
-  #       run: pytest -v
+      - name: Run unit tests
+        env:
+          PYTHONPATH: .:../../libs
+        run: pytest -v
 
   deploy:
     needs: test
