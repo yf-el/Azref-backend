@@ -1,0 +1,100 @@
+name: Deploy crm-sync-lambda
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'services/crm-sync-lambda/**'
+      - 'libs/crm/**'
+      - 'libs/kafka_events/**'
+      - '.github/workflows/deploy-crm-sync-lambda.yml'
+  workflow_dispatch:
+
+env:
+  AWS_REGION: eu-west-1
+  STACK_NAME: azref-dev-crm-sync
+
+# OIDC requires write permission on id-token
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/crm-sync-lambda
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install test deps
+        run: pip install pytest pytest-asyncio pydantic
+        # libs/kafka_events is imported transitively by handler tests; deps
+        # are minimal because tests stub the SF adapter via a fake client.
+
+      - name: Run unit tests
+        env:
+          PYTHONPATH: .:../../libs
+        run: pytest -v
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/crm-sync-lambda
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC, no long-lived keys)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Set up SAM CLI
+        uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+
+      - name: SAM build
+        run: sam build
+
+      - name: SAM deploy
+        run: |
+          sam deploy \
+            --stack-name "$STACK_NAME" \
+            --region "$AWS_REGION" \
+            --resolve-s3 \
+            --capabilities CAPABILITY_IAM \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset \
+            --parameter-overrides \
+              "SfConsumerKey=${{ secrets.SF_CONSUMER_KEY }}" \
+              "SfUsername=${{ vars.SF_USERNAME }}" \
+              "SfPrivateKey=${{ secrets.SF_PRIVATE_KEY }}" \
+              "SfDomain=${{ vars.SF_DOMAIN }}" \
+              "Stage=dev"
+
+      - name: Print function ARN
+        run: |
+          aws cloudformation describe-stacks \
+            --stack-name "$STACK_NAME" \
+            --region "$AWS_REGION" \
+            --query "Stacks[0].Outputs[?OutputKey=='CrmSyncFunctionArn'].OutputValue" \
+            --output text
