@@ -40,7 +40,7 @@ jobs:
         # Settings), which is why pydantic-settings is needed even though
         # the Lambda itself only consumes events. The SF adapter is stubbed
         # in tests via FakeCrmClient, so simple-salesforce isn't required.
-        run: pip install pytest pytest-asyncio pydantic pydantic-settings aiokafka
+        run: pip install pytest pytest-asyncio pydantic pydantic-settings aiokafka # TODO : review this step && keep only the really needed packages 
 
       - name: Run unit tests
         env:
