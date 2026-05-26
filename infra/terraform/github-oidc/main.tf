@@ -135,11 +135,15 @@ data "aws_iam_policy_document" "deploy" {
   # ---------------------------------------------------------------------------
 
   # 5. CloudFormation — SAM is a CFN dialect, every deploy goes through CFN.
+  # The `aws-sam-cli-managed-default` stack is SAM CLI's own bootstrap stack
+  # (created on first `sam deploy --resolve-s3`) that provisions the
+  # deployment S3 bucket. One per account/region, shared across services.
   statement {
     sid     = "CloudFormationDeploy"
     actions = ["cloudformation:*"]
     resources = [
       "arn:aws:cloudformation:${var.aws_region}:${data.aws_caller_identity.current.account_id}:stack/azref-*/*",
+      "arn:aws:cloudformation:${var.aws_region}:${data.aws_caller_identity.current.account_id}:stack/aws-sam-cli-managed-default/*",
       "arn:aws:cloudformation:${var.aws_region}:${data.aws_caller_identity.current.account_id}:changeSet/*",
     ]
   }

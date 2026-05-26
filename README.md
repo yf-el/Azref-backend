@@ -23,7 +23,7 @@ Three independently deployable backend services, plus four shared Python librari
 
 - **`users-service`** — owns the user account / profile / onboarding lifecycle (Clerk-authenticated). Emits user events.
 - **`agent`** — answers legal questions. ReAct loop over a multi-LLM cascade with retrieval over an external legal corpus DB. Emits Q&A events.
-- **`crm-sync-lambda`** — Kafka consumer (via Confluent's managed AWS Lambda Sink Connector) that upserts onboarded users into Salesforce.
+- **`crm-sync-lambda`** — Kafka consumer (via Confluent's managed AWS Lambda Sink Connector) that upserts onboarded users into Salesforce.(Work in progress)
 
 The services don't call each other synchronously. They communicate **only via Kafka events** (Confluent Cloud) on the `azref.user.events` and `azref.agent.events` topics. The shared `kafka_events` lib defines the Pydantic schemas every producer and consumer agrees on.
 
