@@ -12,10 +12,9 @@ Parameters:
     Type: String
     Description: Salesforce integration user username (JWT `sub` claim)
 
-  SfPrivateKey:
+  SfPrivateKeySsmParam:
     Type: String
-    NoEcho: true
-    Description: RSA private key (PEM, multi-line) paired with the cert uploaded to SF
+    Description: Name of the SSM SecureString parameter holding the RSA private key (PEM) paired with the cert uploaded to SF
 
   SfDomain:
     Type: String
@@ -52,8 +51,18 @@ Resources:
         Variables:
           SF_CONSUMER_KEY: !Ref SfConsumerKey
           SF_USERNAME: !Ref SfUsername
-          SF_PRIVATE_KEY: !Ref SfPrivateKey
+          SF_PRIVATE_KEY_SSM_PARAM: !Ref SfPrivateKeySsmParam
           SF_DOMAIN: !Ref SfDomain
+      Policies:
+        - Statement:
+            - Sid: ReadSfPrivateKeySsmParam
+              Effect: Allow
+              Action: ssm:GetParameter
+              Resource: !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter${SfPrivateKeySsmParam}
+            - Sid: DecryptSfPrivateKey
+              Effect: Allow
+              Action: kms:Decrypt
+              Resource: !Sub arn:${AWS::Partition}:kms:${AWS::Region}:${AWS::AccountId}:alias/aws/ssm
       LoggingConfig:
         LogFormat: JSON
         ApplicationLogLevel: INFO
