@@ -159,6 +159,20 @@ data "aws_iam_policy_document" "deploy" {
     resources = ["*"]
   }
 
+  # SAM templates declare `Transform: AWS::Serverless-2016-10-31`, which CFN
+  # resolves via a managed transform resource. CreateChangeSet on a template
+  # that uses a transform requires the action on the transform's own ARN, in
+  # addition to the stack ARN. Without this, deploys fail at the bootstrap
+  # stack with "not authorized to perform: cloudformation:CreateChangeSet on
+  # resource: .../transform/Serverless-2016-10-31".
+  statement {
+    sid     = "CloudFormationServerlessTransform"
+    actions = ["cloudformation:CreateChangeSet"]
+    resources = [
+      "arn:aws:cloudformation:${var.aws_region}:aws:transform/Serverless-2016-10-31",
+    ]
+  }
+
   # 6. Lambda — CRUD on functions prefixed `azref-`.
   statement {
     sid     = "LambdaDeploy"
