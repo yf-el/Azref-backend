@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from cache_semantic import close_redis, get_redis
-from kafka_events import producer as kafka_producer
+from kafka_events.producer import producer as kafka_producer
 
 from app.api.routes import router
 from app.config import settings

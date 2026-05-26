@@ -32,3 +32,4 @@ crash.*.log
 
 # Docker
 .dockerignore-local
+venvTest

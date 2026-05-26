@@ -270,7 +270,7 @@ class TestPublishNowait:
 
 class TestModuleSingleton:
     def test_singleton_is_exported_and_lazy(self) -> None:
-        from kafka_events import producer
+        from kafka_events.producer import producer
 
         # Importing the module-level singleton must NOT have started anything,
         # NOT have required env vars, NOT have touched the network.

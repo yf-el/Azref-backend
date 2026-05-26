@@ -1,5 +1,8 @@
+# `producer` and `KafkaEventProducer` are intentionally NOT re-exported here:
+# importing them would eagerly pull in aiokafka, breaking consumers (like
+# crm-sync-lambda) that only need the event schemas. Producing services
+# import them explicitly: `from kafka_events.producer import producer`.
 from kafka_events.config import KafkaConfig
-from kafka_events.producer import KafkaEventProducer, producer
 from kafka_events.schemas import (
     AgentEvent,
     AgentQuestionAnsweredPayload,
@@ -22,7 +25,6 @@ __all__ = [
     "AgentQuestionAnsweredV1",
     "BaseEvent",
     "KafkaConfig",
-    "KafkaEventProducer",
     "SignupAttribution",
     "TOPIC_AGENT_EVENTS",
     "TOPIC_USER_EVENTS",
@@ -33,5 +35,4 @@ __all__ = [
     "UserProfileUpdatedV1",
     "UserSignedUpPayload",
     "UserSignedUpV1",
-    "producer",
 ]

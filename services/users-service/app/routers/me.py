@@ -19,8 +19,8 @@ from kafka_events import (
     UserProfileUpdatedV1,
     UserSignedUpPayload,
     UserSignedUpV1,
-    producer as kafka_producer,
 )
+from kafka_events.producer import producer as kafka_producer
 
 logger = logging.getLogger(__name__)
 

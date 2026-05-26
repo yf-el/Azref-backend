@@ -13,8 +13,8 @@ from kafka_events import (
     TOPIC_AGENT_EVENTS,
     AgentQuestionAnsweredPayload,
     AgentQuestionAnsweredV1,
-    producer as kafka_producer,
 )
+from kafka_events.producer import producer as kafka_producer
 
 logger = logging.getLogger(__name__)
 
