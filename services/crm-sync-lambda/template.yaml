@@ -40,6 +40,10 @@ Resources:
     Type: AWS::Serverless::Function
     Metadata:
       BuildMethod: makefile
+      # Mono-repo: run the Makefile in this folder directly so relative
+      # paths like `../../libs/crm` resolve. Without this, SAM copies the
+      # CodeUri to a sandbox dir first, breaking out-of-tree imports.
+      BuildInSource: true
     Properties:
       FunctionName: !Sub azref-${Stage}-crm-sync
       CodeUri: ./
